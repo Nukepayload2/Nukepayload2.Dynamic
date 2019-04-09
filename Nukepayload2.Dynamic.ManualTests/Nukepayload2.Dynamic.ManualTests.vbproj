@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Nukepayload2.Dynamic.ManualTests</RootNamespace>
+    <TargetFramework>net461</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Nukepayload2.Dynamic\Nukepayload2.Dynamic.vbproj" />
+  </ItemGroup>
+
+</Project>
