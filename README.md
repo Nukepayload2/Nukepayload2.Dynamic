@@ -1,4 +1,4 @@
 # Nukepayload2.Dynamic
 Provides specialized dynamic features.
 
-- Convert object to interface without implementing the interface explicitly, even the type of the object is not inheritable (`sealed`).
+- Wraps an object with the specified interface, even if the type of the object is not inheritable (`sealed`).
