@@ -51,7 +51,15 @@ Public Module ConversionsEx
         Return tpBuilder
     End Function
 
-    Function CTypeWrap(Of TSource, TInterface As Class)(source As TSource) As TInterface
+    ''' <summary>
+    ''' Wraps the source object with the specified interface.
+    ''' </summary>
+    ''' <typeparam name="TSource">The type of the object to be wrapped.</typeparam>
+    ''' <typeparam name="TInterface">The interface which the anonymous wrapper implements.</typeparam>
+    ''' <param name="source">The object to be wrapped.</param>
+    ''' <returns>If the type of <paramref name="source"/> is reference type, return the wrapped object.
+    ''' Otherwise, make a copy of <paramref name="source"/> and then return the wrapped object.</returns>
+    Public Function CTypeWrap(Of TSource, TInterface As Class)(source As TSource) As TInterface
         Dim targetType = GetType(TInterface)
         If Not targetType.IsInterface Then
             Throw New InvalidCastException($"You can only wrap {NameOf(source)} to an interface type.")
@@ -60,14 +68,24 @@ Public Module ConversionsEx
             Return Nothing
         End If
         Dim sourceType As Type = GetType(TSource)
+        AssertNotRefStruct(sourceType)
+        Dim newTypeName As String = sourceType.FullName & "." & targetType.FullName
+        Dim reused As Boolean = Nothing
+        Dim tpBuilder = GetCTypeWrapTypeBuilder(newTypeName, reused)
+        InitializeTypeBuilder(targetType, sourceType, reused, tpBuilder)
+        Dim builtType As Type = tpBuilder.CreateType
+        Return DirectCast(Activator.CreateInstance(builtType, source), TInterface)
+    End Function
+
+    Private Sub AssertNotRefStruct(sourceType As Type)
         Dim isByRefLikeAttribute = From attr In sourceType.GetCustomAttributes
                                    Where attr.GetType.FullName = RefStructAttrName
         If sourceType.IsValueType AndAlso isByRefLikeAttribute.Any Then
             Throw New InvalidCastException($"You cann't box a ref struct.")
         End If
-        Dim newTypeName As String = sourceType.FullName & "." & targetType.FullName
-        Dim reused As Boolean = Nothing
-        Dim tpBuilder = GetCTypeWrapTypeBuilder(newTypeName, reused)
+    End Sub
+
+    Private Sub InitializeTypeBuilder(targetType As Type, sourceType As Type, reused As Boolean, tpBuilder As TypeBuilder)
         If Not reused Then
             tpBuilder.AddInterfaceImplementation(targetType)
             Dim backingFld = tpBuilder.DefineField("_wrapBackingField", sourceType, FieldAttributes.Private)
@@ -76,9 +94,7 @@ Public Module ConversionsEx
             GenerateEventWrappers(targetType, tpBuilder)
             GenerateConstructorWrapper(sourceType, tpBuilder, backingFld)
         End If
-        Dim builtType As Type = tpBuilder.CreateType
-        Return DirectCast(Activator.CreateInstance(builtType, source), TInterface)
-    End Function
+    End Sub
 
     Private Sub GenerateConstructorWrapper(sourceType As Type, tpBuilder As TypeBuilder, backingFld As FieldBuilder)
         Dim ctorBuilder = tpBuilder.DefineConstructor(MethodAttributes.Public, CallingConventions.Standard, {sourceType})
@@ -118,21 +134,44 @@ Public Module ConversionsEx
                 ' Get, Set, Add, Remove and Raise
                 methodAttr = methodAttr Or MethodAttributes.SpecialName
             End If
-            Dim wrapperMethodBuilder = tpBuilder.DefineMethod(
-                targetType.Name & "_" & interfaceMethod.Name,
-                methodAttr,
-                CallingConventions.HasThis,
-                interfaceMethod.ReturnType,
-                interfaceMethodParamTypes)
-            Dim bodyGen = wrapperMethodBuilder.GetILGenerator
-            bodyGen.Emit(OpCodes.Ldarg_0)
-            bodyGen.Emit(OpCodes.Ldfld, backingFld)
-            For i = 1 To interfaceMethodParams.Length
-                bodyGen.Emit(OpCodes.Ldarg, i)
-            Next
-            bodyGen.EmitCall(OpCodes.Callvirt, wrappedMethod, interfaceMethodParamTypes)
-            bodyGen.Emit(OpCodes.Ret)
-            tpBuilder.DefineMethodOverride(wrapperMethodBuilder, interfaceMethod)
+            GenerateWrapperMethod(targetType, tpBuilder, backingFld, interfaceMethod, interfaceMethodParams, interfaceMethodParamTypes, wrappedMethod, methodAttr)
         Next
+    End Sub
+
+    Private Sub GenerateWrapperMethod(targetType As Type, tpBuilder As TypeBuilder,
+                                      backingFld As FieldBuilder, interfaceMethod As MethodInfo,
+                                      interfaceMethodParams() As ParameterInfo, interfaceMethodParamTypes() As Type,
+                                      wrappedMethod As MethodInfo, methodAttr As MethodAttributes)
+        Dim wrapperMethodBuilder = tpBuilder.DefineMethod(
+            targetType.Name & "_" & interfaceMethod.Name,
+            methodAttr,
+            CallingConventions.HasThis,
+            interfaceMethod.ReturnType,
+            interfaceMethodParamTypes)
+        Dim bodyGen = wrapperMethodBuilder.GetILGenerator
+        bodyGen.Emit(OpCodes.Ldarg_0)
+        bodyGen.Emit(OpCodes.Ldfld, backingFld)
+        For i = 1 To interfaceMethodParams.Length
+            bodyGen.Emit(OpCodes.Ldarg, i)
+        Next
+        bodyGen.Emit(OpCodes.Callvirt, wrappedMethod)
+        If interfaceMethod.ReturnType <> wrappedMethod.ReturnType Then
+            If wrappedMethod.ReturnType = GetType(Void) Then
+                If wrappedMethod.ReturnType.IsValueType Then
+                    bodyGen.Emit(OpCodes.Newobj, wrappedMethod.ReturnType)
+                Else
+                    bodyGen.Emit(OpCodes.Ldnull)
+                End If
+            ElseIf interfaceMethod.ReturnType = GetType(Void) Then
+                bodyGen.Emit(OpCodes.Pop)
+            Else
+                bodyGen.Emit(OpCodes.Ldtoken, interfaceMethod.ReturnType)
+                bodyGen.Emit(OpCodes.Call, GetType(Type).GetMethod("GetTypeFromHandle", {GetType(RuntimeTypeHandle)}))
+                Dim convertChangeType = GetType(Convert).GetMethod("ChangeType", {GetType(Object), GetType(Type)})
+                bodyGen.Emit(OpCodes.Call, convertChangeType)
+            End If
+        End If
+        bodyGen.Emit(OpCodes.Ret)
+        tpBuilder.DefineMethodOverride(wrapperMethodBuilder, interfaceMethod)
     End Sub
 End Module
