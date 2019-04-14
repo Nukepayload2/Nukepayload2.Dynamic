@@ -10,4 +10,8 @@
     <ProjectReference Include="..\Nukepayload2.Dynamic\Nukepayload2.Dynamic.vbproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Reference Include="Microsoft.VisualBasic" />
+  </ItemGroup>
+
 </Project>
