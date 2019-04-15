@@ -1,16 +1,19 @@
 Option Strict On
 
 Imports System.Runtime.CompilerServices
-Imports Nukepayload2.Dynamic
-Imports Nukepayload2.Dynamic.ManualTests
 
 <Assembly: InternalsVisibleTo("Nukepayload2.Dynamic.Generated")>
 
 Module Program
     Sub Main()
         Dim testc As New TestClass
-        Dim converted As ITestA = CTypeWrap(Of TestClass, ITestA)(testc)
-        converted.TestA()
+        Dim wrapped As ITestAOrB = CTypeWrap(Of TestClass, ITestAOrB)(testc)
+        wrapped.TestBase()
+        Dim wrapped2 As ITestAAndB = CTypeWrap(Of ITestAOrB, ITestAAndB)(wrapped)
+        wrapped2.TestA()
+        wrapped2.TestB()
+        Dim unwrapped = CTypeDynamic(Of TestClass)(wrapped)
+        unwrapped.TestA()
     End Sub
 End Module
 
@@ -18,11 +21,6 @@ Class TestClass
     Sub TestA()
         Console.WriteLine("Test A")
     End Sub
-
-    Function aaaaa() As Long
-        Dim a As Integer = 1
-        Return CTypeDynamic(Of Long)(a)
-    End Function
 
     Sub TestB()
         Console.WriteLine("Test B")
@@ -70,11 +68,20 @@ Class TestClassITestAOrBWrapperTemplate
         _backingField.TestBase()
     End Sub
 
+    ' .method public specialname static class Nukepayload2.Dynamic.ManualTests.TestClassITestAOrBWrapperTemplate op_Implicit (
+    '     class Nukepayload2.Dynamic.ManualTests.TestClass srcObject
+    ' ) cil managed 
     Public Shared Widening Operator CType(srcObject As TestClass) As TestClassITestAOrBWrapperTemplate
+        ' ldarg0
+        ' newobj TestClassITestAOrBWrapperTemplate
+        ' ret
         Return New TestClassITestAOrBWrapperTemplate(srcObject)
     End Operator
 
     Public Shared Widening Operator CType(wrapObject As TestClassITestAOrBWrapperTemplate) As TestClass
+        ' ldarg0
+        ' call WrappedObject
+        ' ret
         Return wrapObject.WrappedObject
     End Operator
 End Class

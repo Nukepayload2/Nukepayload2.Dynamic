@@ -69,7 +69,18 @@ Friend Class CTypeWrapper
             GeneratePropertyWrappers(wrapperInterface, tpBuilder)
             GenerateEventWrappers(targetType, tpBuilder)
             GenerateConstructorWrapper(sourceType, tpBuilder, backingFld)
+            GenerateWideningCTypeOperator(sourceType, wrapperInterface, tpBuilder)
         End If
+    End Sub
+
+    Private Sub GenerateWideningCTypeOperator(sourceType As Type, wrapperInterface As Type, tpBuilder As TypeBuilder)
+        Dim methodAttr = MethodAttributes.Public Or MethodAttributes.SpecialName Or
+            MethodAttributes.Static
+        Dim cTypeUnwrapOperator = tpBuilder.DefineMethod("op_Implicit", methodAttr, sourceType, {tpBuilder})
+        Dim il = cTypeUnwrapOperator.GetILGenerator
+        il.Emit(OpCodes.Ldarg_0)
+        il.Emit(OpCodes.Callvirt, wrapperInterface.GetProperty(NameOf(ICTypeWrappedObject(Of Object).WrappedObject)).GetMethod)
+        il.Emit(OpCodes.Ret)
     End Sub
 
     Private Sub GenerateConstructorWrapper(sourceType As Type, tpBuilder As TypeBuilder, backingFld As FieldBuilder)
@@ -81,22 +92,45 @@ Friend Class CTypeWrapper
         ctorBody.Emit(OpCodes.Ret)
     End Sub
 
-    Private Sub GenerateEventWrappers(targetType As Type, tpBuilder As TypeBuilder)
+    Private Sub GenerateEventWrappers(targetType As Type, tpBuilder As TypeBuilder, Optional processedTypes As HashSet(Of Type) = Nothing)
+        If processedTypes Is Nothing Then
+            processedTypes = New HashSet(Of Type)
+        ElseIf processedTypes.Contains(targetType) Then
+            Return
+        End If
         For Each evt In targetType.GetEvents
             tpBuilder.DefineEvent(evt.Name, EventAttributes.None, evt.EventHandlerType)
         Next
+        processedTypes.Add(targetType)
+        For Each baseInterface In targetType.GetInterfaces
+            GenerateEventWrappers(baseInterface, tpBuilder, processedTypes)
+        Next
     End Sub
 
-    Private Sub GeneratePropertyWrappers(targetType As Type, tpBuilder As TypeBuilder)
+    Private Sub GeneratePropertyWrappers(targetType As Type, tpBuilder As TypeBuilder, Optional processedTypes As HashSet(Of Type) = Nothing)
+        If processedTypes Is Nothing Then
+            processedTypes = New HashSet(Of Type)
+        ElseIf processedTypes.Contains(targetType) Then
+            Return
+        End If
         For Each interfaceProperty In targetType.GetProperties
-            tpBuilder.DefineProperty(interfaceProperty.Name, PropertyAttributes.None,
+            tpBuilder.DefineProperty(targetType.Name & "_" & interfaceProperty.Name, PropertyAttributes.None,
                                      interfaceProperty.PropertyType,
                                      Aggregate p In interfaceProperty.GetIndexParameters
                                      Select p.ParameterType Into ToArray)
         Next
+        processedTypes.Add(targetType)
+        For Each baseInterface In targetType.GetInterfaces
+            GeneratePropertyWrappers(baseInterface, tpBuilder, processedTypes)
+        Next
     End Sub
 
-    Private Sub GenerateMethodWrappers(targetType As Type, sourceType As Type, tpBuilder As TypeBuilder, backingFld As FieldBuilder)
+    Private Sub GenerateMethodWrappers(targetType As Type, sourceType As Type, tpBuilder As TypeBuilder, backingFld As FieldBuilder, Optional processedTypes As HashSet(Of Type) = Nothing)
+        If processedTypes Is Nothing Then
+            processedTypes = New HashSet(Of Type)
+        ElseIf processedTypes.Contains(targetType) Then
+            Return
+        End If
         For Each interfaceMethod In targetType.GetMethods
             Dim interfaceMethodParams = interfaceMethod.GetParameters
             Dim interfaceMethodParamTypes = Aggregate p In interfaceMethodParams Select p.ParameterType Into ToArray
@@ -112,6 +146,10 @@ Friend Class CTypeWrapper
             End If
             GenerateWrapperMethod(targetType, tpBuilder, backingFld, interfaceMethod, interfaceMethodParams,
                                   interfaceMethodParamTypes, wrappedMethod, methodAttr)
+        Next
+        processedTypes.Add(targetType)
+        For Each baseInterface In targetType.GetInterfaces
+            GenerateMethodWrappers(baseInterface, sourceType, tpBuilder, backingFld, processedTypes)
         Next
     End Sub
 
