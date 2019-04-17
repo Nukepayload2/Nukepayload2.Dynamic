@@ -6,14 +6,19 @@ Imports System.Runtime.CompilerServices
 
 Module Program
     Sub Main()
-        Dim testc As New TestClass
+        Dim testc As New TestClass With {
+            .BaseValue = "B"
+        }
         Dim wrapped As ITestAOrB = CTypeWrap(Of TestClass, ITestAOrB)(testc)
         wrapped.TestBase()
+        Console.WriteLine(wrapped.BaseValue)
         Dim wrapped2 As ITestAAndB = CTypeWrap(Of ITestAOrB, ITestAAndB)(wrapped)
         wrapped2.TestA()
         wrapped2.TestB()
+        wrapped2.CompositeValue = "D"
         Dim unwrapped = CTypeDynamic(Of TestClass)(wrapped)
         unwrapped.TestA()
+        Console.WriteLine(unwrapped.CompositeValue)
     End Sub
 End Module
 
@@ -29,10 +34,15 @@ Class TestClass
     Sub TestBase()
         Console.WriteLine("Test Base")
     End Sub
+
+    Property BaseValue As String
+
+    Property CompositeValue As String
 End Class
 
 Interface ITestAOrB
     Sub TestBase()
+    Property BaseValue As String
 End Interface
 
 Interface ITestA
@@ -47,6 +57,7 @@ End Interface
 
 Interface ITestAAndB
     Inherits ITestA, ITestB
+    Property CompositeValue As String
 End Interface
 
 Class TestClassITestAOrBWrapperTemplate
@@ -62,6 +73,15 @@ Class TestClassITestAOrBWrapperTemplate
         Get
             Return _backingField
         End Get
+    End Property
+
+    Public Property BaseValue As String Implements ITestAOrB.BaseValue
+        Get
+            Throw New NotImplementedException()
+        End Get
+        Set(value As String)
+            Throw New NotImplementedException()
+        End Set
     End Property
 
     Public Sub TestBase() Implements ITestAOrB.TestBase

@@ -1,6 +1,6 @@
 ﻿Imports System.Reflection
 
-Public Module ConversionsEx
+Public Module DynamicConversion
 
     Private ReadOnly _wrapperFactory As New CTypeWrapper
 
@@ -25,6 +25,9 @@ Public Module ConversionsEx
         Dim sourceType As Type = GetType(TSource)
         _wrapperFactory.AssertNotRefStruct(sourceType)
 
+        If TypeOf source Is TInterface Then
+            Return DirectCast(CObj(source), TInterface)
+        End If
         Dim implementedWrapperInterface =
             GetImplementedWrapperInterface(source.GetType)
 
@@ -53,14 +56,14 @@ Public Module ConversionsEx
     ''' This function does NOT try unbox conversions, IConvertible conversions and user-defined conversion operators
     ''' when unwrapping the <paramref name="source"/> object.
     ''' But it tries those conversions
-    ''' when converting the unwrapped object to <typeparamref name="TSource"/>.
+    ''' when converting the unwrapped object to <typeparamref name="TSource"/>. (Is this behavior good to users?)
     ''' </summary>
     ''' <typeparam name="TInterface">The interface which the anonymous wrapper implements.</typeparam>
     ''' <typeparam name="TSource">The type of the object to be wrapped.</typeparam>
     ''' <param name="source">The object to be unwrapped.</param>
     ''' <returns>If the type of <paramref name="source"/> is wrapped type, return the unwrapped object.</returns>
     ''' <exception cref="InvalidCastException"/>
-    Public Function CTypeUnwrap(Of TInterface As Class, TSource)(source As TInterface) As TSource
+    Friend Function CTypeUnwrap(Of TInterface As Class, TSource)(source As TInterface) As TSource
         If source Is Nothing Then
             Return Nothing
         End If
