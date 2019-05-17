@@ -22,11 +22,40 @@ Public Module DynamicConversion
         If source Is Nothing Then
             Return Nothing
         End If
+
         Dim sourceType As Type = GetType(TSource)
         _wrapperFactory.AssertNotRefStruct(sourceType)
 
+        Return CTypeWrapInternal(Of TInterface)(source, targetType, sourceType)
+    End Function
+
+    ''' <summary>
+    ''' Wraps the source object with the specified interface. The wrap conversion is invertible by calling 
+    ''' the user-defined conversion operator with the <see cref="CTypeDynamic(Of TargetType)(Object)"/> function. 
+    ''' </summary>
+    ''' <typeparam name="TSource">The type of the object to be wrapped.</typeparam>
+    ''' <typeparam name="TInterface">The interface which the anonymous wrapper implements.</typeparam>
+    ''' <param name="source">The object to be wrapped.</param>
+    ''' <returns>If the type of <paramref name="source"/> is reference type, return the wrapped object.
+    ''' Otherwise, make a copy of <paramref name="source"/> and then return the wrapped object.</returns>
+    ''' <exception cref="InvalidCastException"/>
+    Public Function CTypeWrap(Of TInterface As Class)(source As Object) As TInterface
+        Dim targetType = GetType(TInterface)
+        If Not targetType.IsInterface Then
+            Throw New InvalidCastException($"You can only wrap {NameOf(source)} to an interface type.")
+        End If
+        If source Is Nothing Then
+            Return Nothing
+        End If
+
+        Dim sourceType As Type = source.GetType
+
+        Return CTypeWrapInternal(Of TInterface)(source, targetType, sourceType)
+    End Function
+
+    Private Function CTypeWrapInternal(Of TInterface As Class)(source As Object, targetType As Type, ByRef sourceType As Type) As TInterface
         If TypeOf source Is TInterface Then
-            Return DirectCast(CObj(source), TInterface)
+            Return DirectCast(source, TInterface)
         End If
         Dim implementedWrapperInterface =
             GetImplementedWrapperInterface(source.GetType)
