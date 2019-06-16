@@ -76,7 +76,7 @@ Public Module DynamicConversion
         Dim reused As Boolean = Nothing
         Dim tpBuilder = _wrapperFactory.GetCTypeWrapTypeBuilder(newTypeName, reused)
         _wrapperFactory.InitializeTypeBuilder(targetType, sourceType, reused, tpBuilder)
-        Dim builtType As Type = tpBuilder.CreateType
+        Dim builtType As Type = tpBuilder.CreateTypeInfo
         Return DirectCast(Activator.CreateInstance(builtType, boxedSource), TInterface)
     End Function
 
@@ -85,14 +85,13 @@ Public Module DynamicConversion
     ''' This function does NOT try unbox conversions, IConvertible conversions and user-defined conversion operators
     ''' when unwrapping the <paramref name="source"/> object.
     ''' But it tries those conversions
-    ''' when converting the unwrapped object to <typeparamref name="TSource"/>. (Is this behavior good to users?)
+    ''' when converting the unwrapped object to <typeparamref name="TSource"/>.
     ''' </summary>
-    ''' <typeparam name="TInterface">The interface which the anonymous wrapper implements.</typeparam>
     ''' <typeparam name="TSource">The type of the object to be wrapped.</typeparam>
     ''' <param name="source">The object to be unwrapped.</param>
     ''' <returns>If the type of <paramref name="source"/> is wrapped type, return the unwrapped object.</returns>
     ''' <exception cref="InvalidCastException"/>
-    Friend Function CTypeUnwrap(Of TInterface As Class, TSource)(source As TInterface) As TSource
+    Public Function CTypeUnwrap(Of TSource)(source As Object) As TSource
         If source Is Nothing Then
             Return Nothing
         End If
@@ -111,7 +110,14 @@ Public Module DynamicConversion
 
         Dim unwrappedRaw = implementedWrapperInterface.GetProperty("WrappedObject").GetValue(source)
 
+#If SUPPORT_CTYPE_DYNAMIC Then
         Return CTypeDynamic(Of TSource)(unwrappedRaw)
+#Else
+        If Not GetType(TSource).IsPrimitive AndAlso TypeOf unwrappedRaw IsNot TSource Then
+            Throw New PlatformNotSupportedException(CTypeWrapper.ErrorReturnValueConversionGenerationNotSupported)
+        End If
+        Return CType(unwrappedRaw, TSource)
+#End If
     End Function
 
     Private Function GetImplementedWrapperInterface(objType As Type) As Type

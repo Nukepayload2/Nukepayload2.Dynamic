@@ -4,6 +4,10 @@ Imports System.Runtime.CompilerServices
 
 Friend Class CTypeWrapper
 
+#If Not SUPPORT_CTYPE_DYNAMIC Then
+    Friend Const ErrorReturnValueConversionGenerationNotSupported = "The current runtime doesn't support generating the dynamic conversion between return values. Consider using the .NET Framework 4.6.1 assembly of this package."
+#End If
+
     Private Const CTypeWrapAssemblyName = "Nukepayload2.Dynamic.Generated"
     Private Const RefStructAttrName = "System.Runtime.CompilerServices.IsByRefLikeAttribute"
     Private _cTypeWrapAssemblyBuilder As AssemblyBuilder
@@ -15,7 +19,7 @@ Friend Class CTypeWrapper
         Get
             If _cTypeWrapAssemblyBuilder Is Nothing Then
                 _cTypeWrapAssemblyBuilder =
-                    AppDomain.CurrentDomain.DefineDynamicAssembly(
+                    AssemblyBuilder.DefineDynamicAssembly(
                         New AssemblyName(CTypeWrapAssemblyName),
                         AssemblyBuilderAccess.Run)
             End If
@@ -180,9 +184,13 @@ Friend Class CTypeWrapper
             ElseIf interfaceMethod.ReturnType = GetType(Void) Then
                 bodyGen.Emit(OpCodes.Pop)
             Else
+#If SUPPORT_CTYPE_DYNAMIC Then
                 Dim vbCTypeDynamic = GetType(Conversion).GetMethod("CTypeDynamic", {GetType(Object)}).
                     MakeGenericMethod(interfaceMethod.ReturnType)
                 bodyGen.Emit(OpCodes.Call, vbCTypeDynamic)
+#Else
+                Throw New PlatformNotSupportedException(ErrorReturnValueConversionGenerationNotSupported)
+#End If
             End If
         End If
         bodyGen.Emit(OpCodes.Ret)
