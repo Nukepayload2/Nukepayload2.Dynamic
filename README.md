@@ -9,17 +9,24 @@ Provides specialized dynamic features that helps you bring existing TypeScript p
 
 #### Limitations
 - Dynamic types are not supported yet.
-- In the .NET Standard 2.x version, some dynamic type conversions may fail.
 
 #### Usage
+__VB__
 ```vb
 Dim wrapped = CTypeWrap(Of SourceType, ITargetType)(source)
+```
+
+__C#__
+```csharp
+var wrapped = CTypeWrap<SourceType, ITargetType>(source);
 ```
 
 #### Sample
 
 ##### Wrap `TestClass` with `ITest`
+You can convert a existing object to an interface type without requiring the object implements that interface.
 
+__VB__
 ```vb
 <Assembly: InternalsVisibleTo("Nukepayload2.Dynamic.Generated")>
 
@@ -42,8 +49,41 @@ Interface ITest
 End Interface
 ```
 
-##### Composite interface type
+__C#__
+```c#
+using System;
+using System.Runtime.CompilerServices;
 
+[assembly: InternalsVisibleTo("Nukepayload2.Dynamic.Generated")]
+
+static class Program
+{
+    public static void Main()
+    {
+        TestClass testc = new TestClass();
+        ITest wrapped = CTypeWrap<TestClass, ITest>(testc);
+        wrapped.TestSub();
+    }
+}
+
+class TestClass
+{
+    public void TestSub()
+    {
+        Console.WriteLine("Test");
+    }
+}
+
+interface ITest
+{
+    void TestSub();
+}
+```
+
+##### Composite interface type
+You can define a variable that can be either type `ITestA` or type `ITestB`, but it isn't other types.
+
+__VB__
 ```vb
 <Assembly: InternalsVisibleTo("Nukepayload2.Dynamic.Generated")>
 
@@ -102,4 +142,76 @@ Interface ITestAAndB
     Inherits ITestA, ITestB
     Property CompositeValue As String
 End Interface
+```
+
+__C#__
+```c#
+using System;
+using System.Runtime.CompilerServices;
+
+[assembly: InternalsVisibleTo("Nukepayload2.Dynamic.Generated")]
+
+static class Program
+{
+    public static void Main()
+    {
+        TestClass testc = new TestClass()
+        {
+            BaseValue = "B"
+        };
+        ITestAOrB wrapped = CTypeWrap<TestClass, ITestAOrB>(testc);
+        wrapped.TestBase();
+        Console.WriteLine(wrapped.BaseValue);
+        ITestAAndB wrapped2 = CTypeWrap<ITestAOrB, ITestAAndB>(wrapped);
+        wrapped2.TestA();
+        wrapped2.TestB();
+        wrapped2.CompositeValue = "D";
+        var unwrapped = CTypeDynamic<TestClass>(wrapped);
+        unwrapped.TestA();
+        Console.WriteLine(unwrapped.CompositeValue);
+    }
+}
+
+class TestClass
+{
+    public void TestA()
+    {
+        Console.WriteLine("Test A");
+    }
+
+    public void TestB()
+    {
+        Console.WriteLine("Test B");
+    }
+
+    public void TestBase()
+    {
+        Console.WriteLine("Test Base");
+    }
+
+    public string BaseValue { get; set; }
+
+    public string CompositeValue { get; set; }
+}
+
+interface ITestAOrB
+{
+    void TestBase();
+    string BaseValue { get; set; }
+}
+
+interface ITestA : ITestAOrB
+{
+    void TestA();
+}
+
+interface ITestB : ITestAOrB
+{
+    void TestB();
+}
+
+interface ITestAAndB : ITestA, ITestB
+{
+    string CompositeValue { get; set; }
+}
 ```

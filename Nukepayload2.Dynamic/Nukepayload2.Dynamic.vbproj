@@ -6,7 +6,9 @@
     <OptionStrict>On</OptionStrict>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <Copyright>Copyright 2019 Nukepayload2</Copyright>
-    <Description>Provides specialized dynamic features that helps you bring existing TypeScript packages to .NET .</Description>
+    <Description>Provides specialized dynamic features (such as structural type conversions) that helps you bring existing TypeScript packages to .NET .
+Commonly used members:
+Nukepayload2.Dynamic.DynamicConversion.CTypeWrap</Description>
     <PackageProjectUrl>https://github.com/Nukepayload2/Nukepayload2.Dynamic</PackageProjectUrl>
     <RepositoryUrl>https://github.com/Nukepayload2/Nukepayload2.Dynamic</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
