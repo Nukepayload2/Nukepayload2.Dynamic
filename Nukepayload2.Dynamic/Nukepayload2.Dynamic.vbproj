@@ -23,6 +23,7 @@
 
   <ItemGroup Condition="'$(TargetFramework)'=='net461'">
     <Reference Include="Microsoft.VisualBasic" />
+    <Compile Remove="DynamicConversionWorkaround.vb" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)'=='netstandard2.0'">
