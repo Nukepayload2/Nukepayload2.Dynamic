@@ -2,7 +2,7 @@
 Provides specialized dynamic features that helps you bring existing TypeScript packages to .NET .
 
 ## Commonly used members
-### CTypeWrap
+### Nukepayload2.Dynamic.DynamicConversion.CTypeWrap
 - Wraps an object with the specified interface, even if the type of the object is `NotInheritable` (i.e. `sealed`).
 - If an object has been wrapped, unwrap it and then wrap it with a new wrapper class.
 - The wrap operation is invertible with the VB `CTypeDynamic` function or the c# `(Type)(dynamic)expression` expression.

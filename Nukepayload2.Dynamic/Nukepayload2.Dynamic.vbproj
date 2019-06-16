@@ -4,6 +4,15 @@
     <RootNamespace>Nukepayload2.Dynamic</RootNamespace>
     <TargetFrameworks>net461;netstandard2.0</TargetFrameworks>
     <OptionStrict>On</OptionStrict>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <Copyright>Copyright 2019 Nukepayload2</Copyright>
+    <Description>Provides specialized dynamic features that helps you bring existing TypeScript packages to .NET .</Description>
+    <PackageProjectUrl>https://github.com/Nukepayload2/Nukepayload2.Dynamic</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Nukepayload2/Nukepayload2.Dynamic</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>ctype wrap structural</PackageTags>
+    <PackageReleaseNotes>Initial commit</PackageReleaseNotes>
+    <Version>1.0.0-beta1</Version>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
